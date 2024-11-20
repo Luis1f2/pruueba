@@ -29,4 +29,7 @@ router.delete('/rfid/:id_medicamento_rfid', medicineController.deleteMedicineByR
 // Obtener medicamentos por ID de paciente
 router.get('/patient/:id_paciente', medicineController.getMedicinesByIdPatient);
 
+// odtener del broker
+router.post('/pending-rfids',medicineController.pend)
+
 module.exports = router;
