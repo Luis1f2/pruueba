@@ -4,14 +4,10 @@ class AddPendingRFID {
     }
   
     async execute(data) {
-      const { id_medicamento_rfid } = data;
-  
-      if (!id_medicamento_rfid) {
-        throw new Error('El ID RFID es obligatorio');
-      }
-  
+      // Llama al repositorio para guardar el RFID pendiente
       return await this.medicineRepository.savePendingRFID(data);
     }
   }
   
   module.exports = AddPendingRFID;
+  

@@ -23,6 +23,13 @@ class MedicineRepository {
     return result.insertId;
   }
 
+  async getLatestRFID() {
+    const query = `SELECT id_medicamento_rfid FROM RFIDsPendientes ORDER BY fecha_registro DESC LIMIT 1`;
+    const [rows] = await db.execute(query);
+    return rows.length > 0 ? rows[0].id_medicamento_rfid : null;
+  }
+
+
   // Obtener todos los medicamentos
   async findAll() {
     const query = `SELECT * FROM Medicamento`;
@@ -101,10 +108,24 @@ class MedicineRepository {
     return rows;
   }
   
-  // Obtener medicamentos pendientes de completar (nombre_medicamento es NULL)
- 
+  async savePendingRFID(data) {
+    const query = `
+      INSERT INTO RFIDsPendientes (id_medicamento_rfid)
+      VALUES (?)
+    `;
+    const values = [data.id_medicamento_rfid];
+    const [result] = await db.execute(query, values);
+    return result.insertId;
+  }
 
-  // Actualizar un medicamento por RFID
+  // Obtener todos los RFIDs pendientes
+  async findAllPendingRFIDs() {
+    const query = `SELECT * FROM RFIDsPendientes`;
+    const [rows] = await db.execute(query);
+    return rows;
+  }
+
+  
   async updateByRFID(id_medicamento_rfid, medicine) {
     const query = `
       UPDATE Medicamento

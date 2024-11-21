@@ -3,8 +3,8 @@ const GetAllMedicines = require('../../application/use_cases/GetAllMedicines');
 const GetMedicineByRFID = require('../../application/use_cases/GetMedicineByRFID');
 const UpdateMedicine = require('../../application/use_cases/UpdateMedicine');
 const DeleteMedicine = require('../../application/use_cases/DeleteMedicine');
+const AddPendingRFID = require('../../application/use_cases/AddPendingRFID');
 const MedicineRepository = require('../../domain/repositories/MedicineRepository');
-const AddPendingRFID = require('../../application/use_cases/AddPendingRFID')
 
 const medicineRepository = new MedicineRepository();
 
@@ -57,6 +57,27 @@ exports.getMedicinesByIdPatient = async (req, res) => {
     res.status(500).json({ message: 'Error al obtener los medicamentos por ID de paciente', error: err.message });
   }
 };
+
+// Obtener el último RFID registrado
+exports.getLatestRFID = async (req, res) => {
+  try {
+    // Llama al repositorio para obtener todos los RFIDs pendientes
+    const pendingRFIDs = await medicineRepository.findAllPendingRFIDs();
+
+    if (!pendingRFIDs || pendingRFIDs.length === 0) {
+      // Si no hay RFIDs pendientes, devuelve un mensaje de error
+      return res.status(404).json({ message: 'No hay RFIDs pendientes' });
+    }
+
+    // Devolver solo el ID del último RFID registrado (sin el resto del objeto)
+    const latestRFID = pendingRFIDs[pendingRFIDs.length - 1].id_medicamento_rfid;
+    res.status(200).json(latestRFID);  // Solo devuelve el valor del ID, como se solicitó.
+  } catch (err) {
+    // En caso de error, devuelve un mensaje adecuado
+    res.status(500).json({ message: 'Error al obtener el último RFID pendiente', error: err.message });
+  }
+};
+
 exports.pend = async (req, res) => {
   try {
     const { id_medicamento_rfid } = req.body;
@@ -73,34 +94,6 @@ exports.pend = async (req, res) => {
     res.status(500).json({ message: 'Error al registrar el RFID', error: error.message });
   }
 };
-
-// Método para manejar el GET y obtener los RFIDs pendientes
-exports.getPendingRFIDs = async (req, res) => {
-  try {
-    const pendingRFIDs = await medicineRepository.findAllPendingRFIDs();
-    res.status(200).json(pendingRFIDs);
-  } catch (error) {
-    res.status(500).json({ message: 'Error al obtener los RFIDs pendientes', error: error.message });
-  }
-};
-
-// Obtener un medicamento por RFID únicamente
-exports.getMedicineByRFID = async (req, res) => {
-  try {
-    const { id_medicamento_rfid } = req.params;
-    const getMedicineByRFID = new GetMedicineByRFID(medicineRepository);
-    const medicine = await getMedicineByRFID.execute(id_medicamento_rfid);
-
-    if (!medicine) {
-      return res.status(404).json({ message: 'Medicamento no encontrado' });
-    }
-
-    res.status(200).json(medicine);
-  } catch (err) {
-    res.status(500).json({ message: 'Error al obtener el medicamento por RFID', error: err.message });
-  }
-};
-
 // Actualizar un medicamento
 exports.updateMedicine = async (req, res) => {
   try {
@@ -153,35 +146,7 @@ exports.completeMedicine = async (req, res) => {
   }
 };
 
-// Registrar un RFID para un medicamento
-exports.registerRFID = async (req, res) => {
-  try {
-    const { id_medicamento_rfid } = req.body;
-
-    if (!id_medicamento_rfid) {
-      return res.status(400).json({ message: 'El ID RFID es requerido' });
-    }
-
-    const medicine = {
-      id_medicamento_rfid,
-      nombre_medicamento: null,
-      horario_medicamento: null,
-      fecha_inicio: null,
-      fecha_final: null,
-      dosis: null,
-      frecuencias: null,
-      notas_adicionales: null,
-    };
-
-    const id_medicamento = await medicineRepository.save(medicine);
-    res.status(201).json({ message: 'RFID registrado exitosamente', id_medicamento });
-  } catch (err) {
-    res.status(500).json({ message: 'Error al registrar el RFID', error: err.message });
-  }
-};
-
-
-
+// Registrar un RFID pendiente
 exports.pend = async (req, res) => {
   try {
     const { id_medicamento_rfid } = req.body;
@@ -196,7 +161,6 @@ exports.pend = async (req, res) => {
     res.status(500).json({ message: 'Error al registrar el RFID', error: error.message });
   }
 };
-
 
 // Eliminar un medicamento por RFID
 exports.deleteMedicineByRFID = async (req, res) => {
