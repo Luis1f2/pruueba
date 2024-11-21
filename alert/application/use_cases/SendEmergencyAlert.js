@@ -23,8 +23,8 @@ class SendEmergencyAlert {
         const transporter = nodemailer.createTransport({
             service: 'gmail', // Cambiar según el proveedor (ejemplo: SMTP)
             auth: {
-                user: '221271@preu.upchiapas.edu.mx', // Configura tu correo y contraseña
-                pass: PASSWORD
+                user:process.env.EMAIL_USER, // Configura tu correo y contraseña
+                pass: process.env.PASSWORD
             }
         });
 
