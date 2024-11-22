@@ -24,6 +24,6 @@ router.delete('/id/:id', medicineController.deleteMedicine);
 router.get('/patient/:id_paciente', medicineController.getMedicinesByIdPatient);
 
 // Agregar RFID pendiente desde el broker
-router.post('/pending-rfids', medicineController.pend);
+router.post('/pending-rfids', medicineController.pend);  
 
 module.exports = router;

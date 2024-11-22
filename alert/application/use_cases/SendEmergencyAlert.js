@@ -27,9 +27,12 @@ class SendEmergencyAlert {
                 pass: process.env.PASSWORD
             }
         });
+        console.log('EMAIL_USER:', process.env.EMAIL_USER);
+        console.log('PASSWORD:', process.env.PASSWORD ? '****' : 'No configurado');
+
 
         const mailOptions = {
-            from: 'tuemail@gmail.com',
+            from:process.env.EMAIL_USER,
             to: recipientEmail,
             subject: '¡Alerta de Emergencia!',
             text: message || 'El botón de emergencia ha sido presionado. Verifica el estado del paciente.'

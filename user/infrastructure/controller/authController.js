@@ -116,16 +116,34 @@ exports.update = async (req, res) => {
 exports.getAllUsers = async (req, res) => {
   try {
     const getAllUsers = new GetAllUsers(userRepository);
-    const users = await getAllUsers.execute();
+    
+    // Ejecutar y obtener los usuarios
+    let users = await getAllUsers.execute();
 
-    // Excluir contraseñas de los resultados
+    // Verificar si el resultado es un array válido
+    if (!Array.isArray(users)) {
+      console.error('El resultado de getAllUsers.execute() no es un array:', users);
+      // En caso de que no sea un array, devolvemos un array vacío
+      users = [];
+    }
+
+    // Excluir contraseñas de los resultados si hay usuarios
     const sanitizedUsers = users.map(({ contraseña, ...rest }) => rest);
 
+    // Log de los usuarios sanitizados
+    console.log('Usuarios sanitizados:', sanitizedUsers);
+
+    // Enviar la respuesta con los usuarios sanitizados (aunque esté vacío)
     res.status(200).json(sanitizedUsers);
   } catch (err) {
+    // Manejar el error general y devolver un error al cliente
+    console.error('Error durante la ejecución del endpoint:', err.message);
     res.status(500).json({ message: 'Error al obtener los usuarios', error: err.message });
   }
 };
+
+
+
 
 exports.delete = async (req, res) => {
   try {
