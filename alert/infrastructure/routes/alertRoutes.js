@@ -1,12 +1,11 @@
 const express = require('express');
-const router = express.Router();
 const alertController = require('../controller/alertController');
 
-module.exports = (io) => {
-    const alertController = require('../controller/alertController')(io);
-  
-   
-    router.post('/send', alertController.sendEmergencyAlert);
-  
-    return router;
-  };
+const router = express.Router();
+
+// Definir las rutas para manejar las alertas
+router.post('/schedule', alertController.schedule);
+router.post('/confirm/:id_alerta', alertController.confirm);
+router.get('/pending', alertController.getPending);
+
+module.exports = router;

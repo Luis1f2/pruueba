@@ -38,7 +38,7 @@ const io = initIO(server);
 app.use('/auth', authRoutes);
 app.use('/patients', patientRoutes);
 app.use('/medicines', medicineRoutes);
-app.use('/alert', alertRoutes(io)); // Aquí pasamos `io` solo si es necesario
+app.use('/alerts', alertRoutes); // Aquí pasamos `io` solo si es necesario
 app.use('/notification', notificationsRoutes);
 app.use('/statistics', statisticsRoutes);
 
