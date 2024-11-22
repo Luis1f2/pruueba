@@ -2,17 +2,17 @@ const fs = require('fs');
 const https = require('https');
 const cors = require('cors');
 const express = require('express');
-const { Server } = require('socket.io');
-const cron = require('node-cron'); 
+const cron = require('node-cron');
 const NotificationRepository = require('./notifications/domain/repositories/NotificationRepository');
 const GetPendingNotifications = require('./notifications/application/use_cases/GetPendingNotifications');
+const { initIO } = require('./ioInstance'); // Importar la inicialización de Socket.IO
 
 // Configurar CORS
 const corsOptions = {
   origin: ['http://localhost:8083', 'http://localhost:5173'],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
+  credentials: true,
 };
 
 // Importar rutas
@@ -21,6 +21,7 @@ const patientRoutes = require('./patient/infrastructure/routes/patientRoutes');
 const medicineRoutes = require('./medicine/infrastructure/routes/medicineRoutes');
 const notificationsRoutes = require('./notifications/infrastructure/routes/notificationRoutes');
 const alertRoutes = require('./alert/infrastructure/routes/alertRoutes');
+const statisticsRoutes = require('./statistics/infrastructure/routes/statisticsRoutes');
 
 // Crear la aplicación de Express
 const app = express();
@@ -30,33 +31,16 @@ app.use(express.json());
 // Crear servidor HTTP
 const server = require('http').createServer(app);
 
-// Crear instancia de Socket.IO
-const io = new Server(server);
+// Inicializar Socket.IO
+const io = initIO(server);
 
 // Usar rutas
 app.use('/auth', authRoutes);
 app.use('/patients', patientRoutes);
 app.use('/medicines', medicineRoutes);
-app.use('/alert', alertRoutes(io));
+app.use('/alert', alertRoutes(io)); // Aquí pasamos `io` solo si es necesario
 app.use('/notification', notificationsRoutes);
-
-// Conectar clientes con Socket.IO
-io.on('connection', (socket) => {
-  console.log('Un cliente se ha conectado');
-
-  // Emitir mensaje de bienvenida al cliente conectado
-  socket.emit('serverMessage', 'Bienvenido, ¿qué es lo que quieres hacer?');
-
-  // Recibir mensajes del cliente
-  socket.on('clientMessage', (message) => {
-    console.log('Mensaje del cliente:', message);
-  });
-
-  // Desconexión del cliente
-  socket.on('disconnect', () => {
-    console.log('Un cliente se ha desconectado');
-  });
-});
+app.use('/statistics', statisticsRoutes);
 
 // Crear instancia del repositorio de notificaciones
 const notificationRepository = new NotificationRepository();
@@ -90,5 +74,5 @@ cron.schedule('* * * * *', async () => {
 // Iniciar servidor en el puerto especificado
 const PORT = process.env.PORT || 8083;
 server.listen(PORT, () => {
-  console.log(`Servidor HTTPS activo en https://localhost:${PORT}`);
+  console.log(`Servidor activo en http://localhost:${PORT}`);
 });
