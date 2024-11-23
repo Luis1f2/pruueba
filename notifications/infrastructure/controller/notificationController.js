@@ -32,12 +32,22 @@ exports.confirm = async (req, res) => {
 
 exports.getPending = async (req, res) => {
   try {
+    const id_paciente = req.query.id_paciente; // Obtener id_paciente de los parámetros de consulta
     const getPendingNotifications = new GetPendingNotifications(notificationRepository);
+
+    // Obtener todas las notificaciones pendientes
     const notifications = await getPendingNotifications.execute();
-    res.status(200).json(notifications);
-  } catch (err) {
-    res.status(500).json({ message: 'Error al obtener notificaciones pendientes', error: err.message });
-  }
+
+    // Filtrar notificaciones por id_paciente
+    const filteredNotifications = id_paciente
+        ? notifications.filter(n => n.id_paciente == id_paciente)
+        : notifications;
+
+    res.status(200).json(filteredNotifications);
+} catch (err) {
+    console.error("Error al obtener notificaciones pendientes:", err.message);
+    res.status(500).json({ message: "Error al obtener notificaciones pendientes", error: err.message });
+}
 };
 
 exports.buttonPressed = async (req, res) => {
