@@ -19,7 +19,7 @@ class UserRepository {
       throw new Error('Error al guardar el usuario');
     }
 
-    user.id_usuario = result.insertId; // Cambié a `id_usuario` para coincidir con la base de datos
+    user.id_usuario = result.insertId; 
     return user;
   }
 
@@ -72,7 +72,7 @@ class UserRepository {
       throw new Error('No se pudo actualizar el usuario. ID no encontrado.');
     }
 
-    return await this.findById(id); // Retornar el usuario actualizado
+    return await this.findById(id); 
   }
 
   async findAll() {

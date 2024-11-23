@@ -8,8 +8,8 @@ exports.verifyToken = (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token.split(' ')[1], process.env.JWT_SECRET || 'your_secret_key');
-    req.userId = decoded.id; // Agregar el ID del usuario al request
+    const decoded = jwt.verify(token.split(' ')[1], process.env.JWT_SECRET);
+    req.userId = decoded.id; 
     next(); 
   } catch (err) {
     res.status(401).json({ message: 'Unauthorized', error: err.message });

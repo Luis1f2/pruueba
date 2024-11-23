@@ -3,11 +3,12 @@ const https = require('https');
 const cors = require('cors');
 const express = require('express');
 const cron = require('node-cron');
+const { verifyToken } = require('./middleware/auth');
 const NotificationRepository = require('./notifications/domain/repositories/NotificationRepository');
 const GetPendingNotifications = require('./notifications/application/use_cases/GetPendingNotifications');
-const { initIO } = require('./ioInstance'); // Importar la inicialización de Socket.IO
+const { initIO } = require('./ioInstance'); 
 
-// Configurar CORS
+
 const corsOptions = {
   origin: ['http://localhost:8083', 'http://localhost:5173'],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
@@ -15,7 +16,7 @@ const corsOptions = {
   credentials: true,
 };
 
-// Importar rutas
+
 const authRoutes = require('./user/infrastructure/routes/authRoutes');
 const patientRoutes = require('./patient/infrastructure/routes/patientRoutes');
 const medicineRoutes = require('./medicine/infrastructure/routes/medicineRoutes');
@@ -23,38 +24,35 @@ const notificationsRoutes = require('./notifications/infrastructure/routes/notif
 const alertRoutes = require('./alert/infrastructure/routes/alertRoutes');
 const statisticsRoutes = require('./statistics/infrastructure/routes/statisticsRoutes');
 
-// Crear la aplicación de Express
 const app = express();
 app.use(cors(corsOptions));
 app.use(express.json());
 
-// Crear servidor HTTP
+
 const server = require('http').createServer(app);
 
-// Inicializar Socket.IO
 const io = initIO(server);
 
-// Usar rutas
-app.use('/auth', authRoutes);
-app.use('/patients', patientRoutes);
-app.use('/medicines', medicineRoutes);
-app.use('/alerts', alertRoutes); // Aquí pasamos `io` solo si es necesario
-app.use('/notification', notificationsRoutes);
-app.use('/statistics', statisticsRoutes);
 
-// Crear instancia del repositorio de notificaciones
+app.use('/auth', authRoutes);
+app.use('/patients', verifyToken,patientRoutes);
+app.use('/medicines', verifyToken,medicineRoutes);
+app.use('/alerts', verifyToken,alertRoutes); 
+app.use('/notification', verifyToken,notificationsRoutes);
+app.use('/statistics', verifyToken,statisticsRoutes);
+
 const notificationRepository = new NotificationRepository();
 
-// Programar tarea con node-cron para enviar notificaciones automáticamente
+
 cron.schedule('* * * * *', async () => {
   console.log('Verificando notificaciones pendientes cada minuto...');
 
   try {
-    // Obtener notificaciones pendientes
+  
     const getPendingNotifications = new GetPendingNotifications(notificationRepository);
     const pendingNotifications = await getPendingNotifications.execute();
 
-    // Emitir las notificaciones pendientes a los clientes conectados
+   
     pendingNotifications.forEach((notification) => {
       io.emit('notification', {
         id_paciente: notification.id_paciente,
@@ -63,7 +61,6 @@ cron.schedule('* * * * *', async () => {
         fecha_notificacion: notification.fecha_notificacion,
       });
 
-      // Marcar la notificación como completada para evitar reenvíos
       notificationRepository.markAsCompleted(notification.id_medicamento);
     });
   } catch (err) {
@@ -71,7 +68,7 @@ cron.schedule('* * * * *', async () => {
   }
 });
 
-// Iniciar servidor en el puerto especificado
+
 const PORT = process.env.PORT || 8083;
 server.listen(PORT, () => {
   console.log(`Servidor activo en http://localhost:${PORT}`);

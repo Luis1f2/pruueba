@@ -117,7 +117,7 @@ exports.getAllUsers = async (req, res) => {
   try {
     const getAllUsers = new GetAllUsers(userRepository);
     
-    // Ejecutar y obtener los usuarios
+    
     let users = await getAllUsers.execute();
 
     // Verificar si el resultado es un array válido
