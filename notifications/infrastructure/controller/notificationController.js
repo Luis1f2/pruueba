@@ -16,17 +16,86 @@ exports.schedule = async (req, res) => {
   }
 };
 
-exports.confirm = async (req, res) => {
+exports.buttonPressed = async (req, res) => {
   try {
-    const { id_medicamento } = req.params;
-    const confirmNotification = new ConfirmNotification(notificationRepository);
-    const result = await confirmNotification.execute(id_medicamento);
-    if (!result) {
-      return res.status(404).json({ message: 'Notificación no encontrada' });
+    // Verifica si el evento es el esperado
+    if (!req.body || req.body.event !== "botón notificacion presionado") {
+      return res.status(400).json({ message: 'Evento inválido o faltante' });
     }
-    res.status(200).json({ message: 'Notificación confirmada' });
+
+    console.log('Evento de botón recibido. Procesando notificación...');
+
+    // 1. Consulta la notificación más cercana pendiente
+    const pendingNotifications = await notificationRepository.findPending();
+    if (pendingNotifications.length === 0) {
+      return res.status(404).json({ message: 'No hay notificaciones pendientes para confirmar en este momento' });
+    }
+
+    const now = new Date();
+    let closestNotification = null;
+    let smallestDifference = Infinity;
+
+    // Encuentra la notificación más cercana a la hora actual
+    pendingNotifications.forEach(notification => {
+      const notificationDate = new Date(notification.fecha_notificacion);
+      const timeDifference = Math.abs(now - notificationDate);
+
+      if (timeDifference < smallestDifference) {
+        smallestDifference = timeDifference;
+        closestNotification = notification;
+      }
+    });
+
+    if (!closestNotification) {
+      return res.status(404).json({ message: 'No se encontró una notificación válida para confirmar.' });
+    }
+
+    // 2. Confirma la notificación
+    await notificationRepository.markAsCompleted(closestNotification.id_medicamento);
+
+    // 3. Emite una notificación de confirmación al frontend
+    io.emit('notification', {
+      id_paciente: closestNotification.id_paciente,
+      id_medicamento: closestNotification.id_medicamento,
+      mensaje: `¡Excelente! Has tomado tu medicamento: ${closestNotification.mensaje}`,
+    });
+
+    console.log(`Notificación confirmada: Medicamento ${closestNotification.id_medicamento}`);
+
+    // 4. Procesa la siguiente notificación, si existe
+    const nextNotifications = pendingNotifications.filter(
+      n => n.id_medicamento !== closestNotification.id_medicamento
+    );
+
+    if (nextNotifications.length > 0) {
+      const nextNotification = nextNotifications[0];
+
+      // Reprograma la próxima notificación
+      io.emit('notification', {
+        id_paciente: nextNotification.id_paciente,
+        id_medicamento: nextNotification.id_medicamento,
+        mensaje: `Hora de tomar tu próximo medicamento: ${nextNotification.mensaje}`,
+      });
+
+      console.log(`Siguiente notificación programada: Medicamento ${nextNotification.id_medicamento}`);
+    } else {
+      // Si no hay más notificaciones, reprograma para la próxima hora
+      console.log('No hay más notificaciones en este ciclo. Reprogramando para la próxima hora...');
+      const scheduleNotifications = new ScheduleNotifications(notificationRepository);
+      const reprogramSchedule = await scheduleNotifications.execute({
+        id_paciente: closestNotification.id_paciente,
+        id_medicamento: closestNotification.id_medicamento,
+        horario_medicamento: calcularProximoHorario(new Date()),
+        nombre_medicamento: closestNotification.mensaje,
+      });
+
+      console.log('Reprogramación completada:', reprogramSchedule);
+    }
+
+    res.status(200).json({ message: 'Notificación procesada correctamente.' });
   } catch (err) {
-    res.status(500).json({ message: 'Error al confirmar notificación', error: err.message });
+    console.error('Error al procesar el evento del botón:', err);
+    res.status(500).json({ message: 'Error al procesar el evento del botón.', error: err.message });
   }
 };
 
