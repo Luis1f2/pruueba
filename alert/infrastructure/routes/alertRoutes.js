@@ -5,7 +5,7 @@ const router = express.Router();
 
 // Definir las rutas para manejar las alertas
 router.post('/schedule', alertController.schedule);
-router.post('/confirm/:id_alerta', alertController.confirm);
+router.post('/button-pressed', alertController.buttonPressed);
 router.get('/pending', alertController.getPending);
 
 module.exports = router;

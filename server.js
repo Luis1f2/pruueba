@@ -45,9 +45,10 @@ const notificationRepository = new NotificationRepository();
 
 
 cron.schedule('* * * * *', async () => {
-  console.log('Verificando notificaciones pendientes cada minuto...');
+  console.log('Verificando notificaciones y alertas pendientes cada minuto...');
 
   try {
+      
       const getPendingNotifications = new GetPendingNotifications(notificationRepository);
       const pendingNotifications = await getPendingNotifications.execute();
 
@@ -55,7 +56,6 @@ cron.schedule('* * * * *', async () => {
           const room = `paciente_${notification.id_paciente}`;
           console.log(`Enviando notificación al paciente ${notification.id_paciente}: ${notification.mensaje}`);
 
-          // Emitir solo a la sala del paciente correspondiente
           io.to(room).emit('notification', {
               id_paciente: notification.id_paciente,
               id_medicamento: notification.id_medicamento,
@@ -63,14 +63,32 @@ cron.schedule('* * * * *', async () => {
               fecha_notificacion: notification.fecha_notificacion,
           });
 
-          // Marcar la notificación como completada
           notificationRepository.markAsCompleted(notification.id_medicamento);
       });
-  } catch (err) {
-      console.error('Error al enviar notificaciones pendientes:', err.message);
-  }
+      const getPendingAlerts = new GetPendingAlerts(alertRepository);
+      const pendingAlerts = await getPendingAlerts.execute();
 
+      pendingAlerts.forEach((alert) => {
+          const room = `usuario_${alert.id_usuario}`;
+          console.log(`Enviando alerta al usuario ${alert.id_usuario}: ${alert.mensaje}`);
+
+          // Emitir alerta al usuario correspondiente
+          io.to(room).emit('alert', {
+              id_usuario: alert.id_usuario,
+              id_alerta: alert.id_alerta,
+              mensaje: alert.mensaje,
+              fecha_alerta: alert.fecha_alerta,
+          });
+
+          // Marcar la alerta como completada
+          alertRepository.markAsCompleted(alert.id_alerta);
+      });
+
+  } catch (err) {
+      console.error('Error al enviar notificaciones y alertas pendientes:', err.message);
+  }
 });
+
 
 
 const PORT = process.env.PORT || 8083;

@@ -3,10 +3,10 @@ const ConfirmAlert = require('../../application/use_cases/ConfirmAlert');
 const GetPendingAlerts = require('../../application/use_cases/GetPendingAlerts');
 const AlertRepository = require('../../domain/repositories/AlertRepository');
 
-// Crear instancia del repositorio de alertas
+
 const alertRepository = new AlertRepository();
 
-// Controlador para programar nuevas alertas
+
 exports.schedule = async (req, res) => {
   try {
     const scheduleAlert = new ScheduleAlert(alertRepository);
@@ -23,26 +23,30 @@ exports.schedule = async (req, res) => {
   }
 };
 
-// Controlador para confirmar una alerta específica
-exports.confirm = async (req, res) => {
+
+exports.buttonPressed = async (req, res) => {
   try {
-    const { id_alerta } = req.params; // Obtener el ID de la alerta desde los parámetros de la URL
+      // Validar el evento recibido
+      if (!req.body || req.body.event !== "botón alerta presionado") {
+          return res.status(400).json({ message: 'Evento inválido o faltante' });
+      }
 
-    const confirmAlert = new ConfirmAlert(alertRepository);
+      console.log('Evento del botón de alerta procesado:', req.body);
 
-    // Ejecutar la lógica para confirmar la alerta
-    const result = await confirmAlert.execute(id_alerta);
+      // Lógica para manejar el evento
+      const alertData = {
+          id_usuario: req.body.id_usuario || null, // Asignar un usuario si es necesario
+          mensaje: "Alerta de emergencia activada por el botón",
+      };
 
-    if (!result) {
-      // Si no se encuentra la alerta, responder con un error 404
-      return res.status(404).json({ message: 'Alerta no encontrada' });
-    }
+      // Opcional: Guardar la alerta en la base de datos
+      await alertRepository.save(alertData);
 
-    // Responder confirmando la alerta
-    res.status(200).json({ message: 'Alerta confirmada' });
+      // Respuesta exitosa
+      res.status(200).json({ message: 'Alerta procesada exitosamente', alertData });
   } catch (err) {
-    console.error('Error al confirmar alerta:', err);
-    res.status(500).json({ message: 'Error al confirmar alerta', error: err.message });
+      console.error('Error al procesar el evento del botón de alerta:', err.message);
+      res.status(500).json({ message: 'Error al procesar la alerta', error: err.message });
   }
 };
 
