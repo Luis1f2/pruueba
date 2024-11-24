@@ -48,27 +48,28 @@ cron.schedule('* * * * *', async () => {
   console.log('Verificando notificaciones pendientes cada minuto...');
 
   try {
-    const getPendingNotifications = new GetPendingNotifications(notificationRepository);
-    const pendingNotifications = await getPendingNotifications.execute();
+      const getPendingNotifications = new GetPendingNotifications(notificationRepository);
+      const pendingNotifications = await getPendingNotifications.execute();
 
-    pendingNotifications.forEach((notification) => {
-        const room = `paciente_${notification.id_paciente}`;
-        console.log(`Enviando notificación al paciente ${notification.id_paciente}: ${notification.mensaje}`);
+      pendingNotifications.forEach((notification) => {
+          const room = `paciente_${notification.id_paciente}`;
+          console.log(`Enviando notificación al paciente ${notification.id_paciente}: ${notification.mensaje}`);
 
-        // Emitir solo a la sala del paciente correspondiente
-        io.to(room).emit('notification', {
-            id_paciente: notification.id_paciente,
-            id_medicamento: notification.id_medicamento,
-            mensaje: notification.mensaje,
-            fecha_notificacion: notification.fecha_notificacion,
-        });
+          // Emitir solo a la sala del paciente correspondiente
+          io.to(room).emit('notification', {
+              id_paciente: notification.id_paciente,
+              id_medicamento: notification.id_medicamento,
+              mensaje: notification.mensaje,
+              fecha_notificacion: notification.fecha_notificacion,
+          });
 
-        // Marcar la notificación como completada
-        notificationRepository.markAsCompleted(notification.id_medicamento);
-    });
-} catch (err) {
-    console.error('Error al enviar notificaciones pendientes:', err.message);
-}
+          // Marcar la notificación como completada
+          notificationRepository.markAsCompleted(notification.id_medicamento);
+      });
+  } catch (err) {
+      console.error('Error al enviar notificaciones pendientes:', err.message);
+  }
+
 });
 
 
