@@ -1,14 +1,15 @@
 const db = require('../../infrastructure/database');
 
 const getAllMessages = async () => {
-  const query = `
-    SELECT s.sensor_name, sa.value, sa.message, sa.event_time
-    FROM Sensors s
-    JOIN SensorActivity sa ON s.sensor_id = sa.sensor_id
-    ORDER BY sa.event_time DESC
-  `;
-  const [rows] = await db.execute(query);
-  return rows;
+  try {
+    // Consulta SQL para obtener todos los datos
+    const query = `SELECT * FROM SensorActivity`;
+    const [rows] = await db.execute(query);
+    return rows;
+  } catch (error) {
+    console.error('Error al obtener los mensajes:', error.message);
+    throw error; // Lanza el error para que el controlador lo maneje
+  }
 };
 
 module.exports = { getAllMessages };
