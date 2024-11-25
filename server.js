@@ -23,6 +23,7 @@ const medicineRoutes = require('./medicine/infrastructure/routes/medicineRoutes'
 const notificationsRoutes = require('./notifications/infrastructure/routes/notificationRoutes');
 const alertRoutes = require('./alert/infrastructure/routes/alertRoutes');
 const statisticsRoutes = require('./statistics/infrastructure/routes/statisticsRoutes');
+const sensorRoutes = require('./sensor/infrastructure/routes/sensorRoutes')
 
 const app = express();
 app.use(cors(corsOptions));
@@ -37,10 +38,10 @@ const io = initIO(server);
 app.use('/auth', authRoutes);
 app.use('/patients', verifyToken,patientRoutes);
 app.use('/medicines', verifyToken,medicineRoutes);
-app.use('/alerts', verifyToken,alertRoutes); 
-app.use('/notification', verifyToken,notificationsRoutes);
-app.use('/statistics', verifyToken,statisticsRoutes);
-
+app.use('/alerts', alertRoutes); 
+app.use('/notification',notificationsRoutes);
+app.use('/statistics',verifyToken,statisticsRoutes);
+app.use('/sensor',sensorRoutes)
 const notificationRepository = new NotificationRepository();
 
 

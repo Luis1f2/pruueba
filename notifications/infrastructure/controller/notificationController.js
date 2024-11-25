@@ -19,7 +19,8 @@ exports.schedule = async (req, res) => {
 exports.buttonPressed = async (req, res) => {
   try {
     // Verifica si el evento es el esperado
-    if (!req.body || req.body.event !== "botón notificacion presionado") {
+    if (!req.body || req.body.event !== "botón presionado") {
+      console.log(req.body)
       return res.status(400).json({ message: 'Evento inválido o faltante' });
     }
 
