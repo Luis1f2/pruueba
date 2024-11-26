@@ -24,6 +24,7 @@ const notificationsRoutes = require('./notifications/infrastructure/routes/notif
 const alertRoutes = require('./alert/infrastructure/routes/alertRoutes');
 const statisticsRoutes = require('./statistics/infrastructure/routes/statisticsRoutes');
 const sensorRoutes = require('./sensor/infrastructure/routes/sensorRoutes')
+const miniApiRoutes = require('./mini_api')
 
 const app = express();
 app.use(cors(corsOptions));
@@ -42,6 +43,7 @@ app.use('/alerts', alertRoutes);
 app.use('/notification',notificationsRoutes);
 app.use('/statistics', statisticsRoutes);
 app.use('/sensor',sensorRoutes)
+app.use('/mini-api', miniApiRoutes);
 const notificationRepository = new NotificationRepository();
 
 
