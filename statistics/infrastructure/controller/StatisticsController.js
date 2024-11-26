@@ -23,6 +23,25 @@ class StatisticsController {
       res.status(500).json({ error: err.message });
     }
   }
+
+  static async saveStatistics(req, res) {
+    const { userId, adherence, probability, alerts } = req.body; // Extraer datos del cuerpo de la solicitud
+    const statisticsRepository = new StatisticsRepository();
+
+    try {
+        const statistic = new Statistic({ userId, adherence, probability, alert: alerts });
+        await statisticsRepository.saveStatistic(statistic);
+
+        res.status(201).json({ message: 'Statistics saved successfully' });
+    } catch (err) {
+        console.error('Error en StatisticsController:', err.message);
+        res.status(500).json({ error: err.message });
+    }
 }
+
+
+}
+
+
 
 module.exports = StatisticsController;

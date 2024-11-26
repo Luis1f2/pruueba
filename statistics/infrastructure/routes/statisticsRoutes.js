@@ -4,5 +4,6 @@ const StatisticsController = require('../controller/StatisticsController');
 
 // Ruta para obtener estadísticas
 router.get('/:userId', StatisticsController.getStatistics);
+router.post('/add',StatisticsController.saveStatistics)
 
 module.exports = router;

@@ -29,6 +29,21 @@ class StatisticsRepository {
     const probability = 1 - adherence / 100; // Probabilidad inversa a la adherencia
     return probability.toFixed(2);
   }
+
+  async saveStatistic(statistic) {
+    const query = `
+        INSERT INTO statistics (usuario_id, adherence, probability, alert) 
+        VALUES (?, ?, ?, ?)
+    `;
+    await database.execute(query, [
+        statistic.userId,
+        statistic.adherence,
+        statistic.probability,
+        statistic.alert
+    ]);
+}
+
+
 }
 
 module.exports = StatisticsRepository;
