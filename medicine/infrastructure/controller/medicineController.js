@@ -11,13 +11,37 @@ const medicineRepository = new MedicineRepository();
 // Crear un medicamento
 exports.addMedicine = async (req, res) => {
   try {
+    // 1. Crear el medicamento
     const addMedicine = new AddMedicine(medicineRepository);
     const id_medicamento = await addMedicine.execute(req.body);
-    res.status(201).json({ message: 'Medicamento creado exitosamente', id_medicamento });
+
+    // 2. Generar notificaciones relacionadas al medicamento
+    const medicamento = { ...req.body, id_medicamento }; // Combina el cuerpo del request con el ID del medicamento recién creado
+    const scheduleNotifications = new ScheduleNotifications(notificationRepository);
+    const notifications = await scheduleNotifications.execute(medicamento); // Genera y guarda notificaciones
+
+    // 3. (Opcional) Emitir notificaciones al frontend en tiempo real
+    notifications.forEach((notification) => {
+      io.emit('notification', {
+        mensaje: notification.mensaje,
+        id_paciente: notification.id_paciente,
+        id_medicamento: notification.id_medicamento,
+        fecha_notificacion: notification.fecha_notificacion,
+      });
+    });
+
+    // 4. Responder al cliente
+    res.status(201).json({
+      message: 'Medicamento creado exitosamente y notificaciones generadas',
+      id_medicamento,
+      notifications, // Incluye las notificaciones generadas en la respuesta
+    });
   } catch (err) {
+    console.error('Error al crear medicamento y generar notificaciones:', err.message);
     res.status(500).json({ message: 'Error al crear el medicamento', error: err.message });
   }
 };
+
 
 // Obtener todos los medicamentos
 exports.getAllMedicines = async (req, res) => {

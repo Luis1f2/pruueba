@@ -4,7 +4,7 @@ const notificationController = require('../controller/notificationController');
 
 router.post('/schedule', notificationController.schedule);
 router.post('/button-pressed', notificationController.buttonPressed);
-router.get('/pending', notificationController.getPending);
-router.get('/pending:id',notificationController.getPendingByPatient)
+router.get('/notificaciones', notificationController.getNotifications);
+
 
 module.exports = router;

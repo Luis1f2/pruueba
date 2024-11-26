@@ -40,7 +40,7 @@ app.use('/patients', verifyToken,patientRoutes);
 app.use('/medicines', verifyToken,medicineRoutes);
 app.use('/alerts', alertRoutes); 
 app.use('/notification',notificationsRoutes);
-app.use('/statistics',verifyToken,statisticsRoutes);
+app.use('/statistics', statisticsRoutes);
 app.use('/sensor',sensorRoutes)
 const notificationRepository = new NotificationRepository();
 

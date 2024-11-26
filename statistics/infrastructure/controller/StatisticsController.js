@@ -1,4 +1,5 @@
 const { getIO } = require('../../../ioInstance'); // Asegúrate de que la ruta sea correcta
+const Statistic = require('../../domain/entities/Statistic');
 const StatisticsRepository = require('../../domain/repositories/StatisticsRepository');
 const GetStatisticsData = require('../../application/use_cases/GetStatisticsData');
 

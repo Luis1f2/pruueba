@@ -99,47 +99,45 @@ exports.buttonPressed = async (req, res) => {
     res.status(500).json({ message: 'Error al procesar el evento del botón.', error: err.message });
   }
 };
-
-exports.getPending = async (req, res) => {
+exports.getPendingNotifications = async (req, res) => {
   try {
-    const id_paciente = req.query.id_paciente; // Obtener id_paciente de los parámetros de consulta
-    const getPendingNotifications = new GetPendingNotifications(notificationRepository);
+    const { id_paciente, id_medicamento } = req.query;
 
-    // Obtener todas las notificaciones pendientes
-    const notifications = await getPendingNotifications.execute();
-
-    // Filtrar notificaciones por id_paciente
-    const filteredNotifications = id_paciente
-        ? notifications.filter(n => n.id_paciente == id_paciente)
-        : notifications;
-
-    res.status(200).json(filteredNotifications);
-} catch (err) {
-    console.error("Error al obtener notificaciones pendientes:", err.message);
-    res.status(500).json({ message: "Error al obtener notificaciones pendientes", error: err.message });
-}
-};
-
-exports.getPendingByPatient = async (req, res) => {
-  try {
-    const { id_paciente } = req.params; // Obtener el id_paciente desde la URL
-    const getPendingNotifications = new GetPendingNotifications(notificationRepository);
-
-    // Obtener todas las notificaciones pendientes
-    const notifications = await getPendingNotifications.execute();
-
-    // Filtrar por id_paciente
-    const filteredNotifications = notifications.filter(n => n.id_paciente == id_paciente);
-
-    // Verificar si hay notificaciones
-    if (filteredNotifications.length === 0) {
-      return res.status(404).json({ message: `No hay notificaciones pendientes para el paciente ${id_paciente}` });
+    // Validar que el `id_paciente` esté presente
+    if (!id_paciente) {
+      return res.status(400).json({ message: 'El id_paciente es requerido' });
     }
 
-    res.status(200).json(filteredNotifications);
+    const getPendingNotifications = new GetPendingNotifications(notificationRepository);
+    const notifications = await getPendingNotifications.execute({ idPaciente: id_paciente, idMedicamento: id_medicamento });
+
+    res.status(200).json(notifications);
   } catch (err) {
-    console.error("Error al obtener notificaciones pendientes para el paciente:", err.message);
-    res.status(500).json({ message: "Error al obtener notificaciones pendientes", error: err.message });
+    console.error('Error al obtener notificaciones pendientes:', err.message);
+    res.status(500).json({ message: 'Error al obtener las notificaciones pendientes', error: err.message });
+  }
+};
+
+exports.getNotifications = async (req, res) => {
+  try {
+    console.log('Solicitud recibida:', req.query); 
+    const id_paciente = req.query?.id_paciente;
+    const id_medicamento = req.query?.id_medicamento;
+
+    if (!id_paciente) {
+      return res.status(400).json({ message: 'El id_paciente es requerido' });
+    }
+
+    const getPendingNotifications = new GetPendingNotifications(notificationRepository);
+    const notifications = await getPendingNotifications.execute({
+      idPaciente: id_paciente,
+      idMedicamento: id_medicamento,
+    });
+
+    res.status(200).json(notifications);
+  } catch (err) {
+    console.error('Error al obtener notificaciones pendientes:', err.message);
+    res.status(500).json({ message: 'Error al obtener las notificaciones pendientes', error: err.message });
   }
 };
 

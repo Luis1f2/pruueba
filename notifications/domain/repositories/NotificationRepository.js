@@ -14,36 +14,61 @@ class NotificationRepository {
         notification.estado,
         notification.fecha_notificacion,
       ];
-  
+
       // Log para verificar los valores que se están intentando guardar
       console.log('Valores a guardar en la base de datos:', values);
-  
+
       const [result] = await db.execute(query, values);
       notification.id_notificacion = result.insertId;
       return notification;
-  
+
     } catch (error) {
       console.error('Error al guardar la notificación en la base de datos:', error);
       throw error;
     }
   }
-  
+
+  async findPendingByPaciente(idPaciente) {
+    try {
+      const query = `
+        SELECT * FROM Notificaciones 
+        WHERE id_paciente = ? AND estado = 'pendiente'
+      `;
+      const [rows] = await db.query(query, [idPaciente]);
+      return rows;
+    } catch (error) {
+      console.error('Error al buscar notificaciones pendientes por paciente:', error);
+      throw error;
+    }
+  }
 
   async findPending() {
-    const query = `SELECT * FROM Notificaciones WHERE estado = 'pendiente' AND fecha_notificacion <= NOW()`;
-    const [rows] = await db.execute(query);
-    return rows;
+    try {
+      const query = `
+        SELECT * FROM Notificaciones 
+        WHERE estado = 'pendiente' AND fecha_notificacion <= NOW()
+      `;
+      const [rows] = await db.query(query);
+      return rows;
+    } catch (error) {
+      console.error('Error al buscar notificaciones pendientes:', error);
+      throw error;
+    }
   }
-  
 
   async markAsCompleted(idMedicamento) {
-    const query = `
-      UPDATE Notificaciones
-      SET estado = 'completada'
-      WHERE id_medicamento = ? AND estado = 'pendiente'
-    `;
-    const [result] = await db.execute(query, [idMedicamento]);
-    return result.affectedRows > 0;
+    try {
+      const query = `
+        UPDATE Notificaciones
+        SET estado = 'completada'
+        WHERE id_medicamento = ? AND estado = 'pendiente'
+      `;
+      const [result] = await db.execute(query, [idMedicamento]);
+      return result.affectedRows > 0;
+    } catch (error) {
+      console.error('Error al marcar la notificación como completada:', error);
+      throw error;
+    }
   }
 }
 
