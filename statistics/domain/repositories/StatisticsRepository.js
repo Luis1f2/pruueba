@@ -1,6 +1,14 @@
 const database = require('../../../user/infrastructure/database');
 
 class StatisticsRepository {
+  async addRegister({ usuario_id, a_tiempo, fecha_toma }) {
+    const query = `
+      INSERT INTO registro_tomas (usuario_id, a_tiempo, fecha_toma)
+      VALUES (?, ?, ?)
+    `;
+    await database.execute(query, [usuario_id, a_tiempo, fecha_toma]);
+  }
+  
   async getAdherence(userId) {
     const query = `
       SELECT 
@@ -42,8 +50,6 @@ class StatisticsRepository {
         statistic.alert
     ]);
 }
-
-
 }
 
 module.exports = StatisticsRepository;
