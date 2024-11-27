@@ -47,6 +47,94 @@ async function handleMessageToAPI(channel, message, apiUrl, queueName) {
   const retryCount = (message.properties.headers?.['x-retry'] || 0);
 
   try {
+    // Lógica específica para sensor_data
+    if (queueName === 'sensor_data') {
+      console.log(`Enviando datos a la API desde la cola "sensor_data":`, content);
+
+      // Enviar datos a la API
+      const response = await axiosInstance.post('https://back-pillcare.zapto.org/medicines/pending-rfids', content, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      console.log(`Respuesta de la API para la cola "sensor_data":`, response.data);
+
+      // Confirmar el mensaje después de procesarlo
+      channel.ack(message);
+      return;
+    }
+
+    // Lógica específica para sensores_data
+    if (queueName === 'sensores_data') {
+      // Extraer datos para insertar en la base de datos
+      const { sensor, status } = content;
+
+      // Insertar datos en la base de datos
+      await insertSensorDataToDB(sensor, status);
+
+      // Confirmar el mensaje después de procesarlo
+      channel.ack(message);
+      return;
+    }
+
+    // Lógica de transformación para otras colas
+    if (!content.id_usuario) {
+      content.id_usuario = 0; // Usuario predeterminado
+    }
+    if (!content.mensaje) {
+      content.mensaje = `Mensaje desde ${queueName}`;
+    }
+    if (!content.fecha_alerta) {
+      content.fecha_alerta = new Date().toISOString(); // Fecha actual
+    }
+    console.log(`Mensaje transformado para la cola "${queueName}":`, content);
+
+    // Enviar datos transformados a la API
+    const response = await axiosInstance.post(apiUrl, content, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    console.log(`Respuesta de la API para la cola "${queueName}":`, response.data);
+
+    // Confirmar el mensaje si se procesó correctamente
+    channel.ack(message);
+  } catch (error) {
+    console.error(`Error enviando datos a la API desde la cola "${queueName}":`, {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data,
+    });
+
+    // Manejo de reintentos
+    if (retryCount < MAX_RETRY_COUNT) {
+      const newRetryCount = retryCount + 1;
+      console.warn(`Reintentando mensaje (${newRetryCount} de ${MAX_RETRY_COUNT}) en la cola "${queueName}"`);
+      channel.sendToQueue(queueName, Buffer.from(message.content), {
+        headers: { 'x-retry': newRetryCount },
+        persistent: true,
+      });
+    } else {
+      console.warn(`Mensaje descartado tras ${retryCount} intentos fallidos en la cola "${queueName}"`);
+      channel.sendToQueue(`${queueName}_dlq`, Buffer.from(message.content), { persistent: true });
+    }
+
+    channel.ack(message); // Confirmar el mensaje incluso si falla para evitar bloqueo
+  }
+}
+
+// Función para manejar mensajes y enviar datos a la API
+async function handleMessageToAPI(channel, message, apiUrl, queueName) {
+  if (!message) return;
+
+  let content = JSON.parse(message.content.toString());
+  console.log(`Mensaje recibido en la cola "${queueName}":`, content);
+
+  const retryCount = (message.properties.headers?.['x-retry'] || 0);
+
+  try {
     // Si es la cola "boton_alerta", no transformar el mensaje
     if (queueName === 'boton_alerta') {
       console.log(`Enviando mensaje sin transformación desde la cola "${queueName}":`, content);
@@ -179,7 +267,7 @@ function startConsumers(channel) {
   }, { noAck: false });
 
   channel.consume(rfidQueueName, (message) => {
-    handleMessageToAPI(channel, message, 'https://back-pillcare.zapto.org/rfid/data', rfidQueueName);
+    handleMessageToAPI(channel, message, 'https://back-pillcare.zapto.org/medicines/pending-rfids', rfidQueueName);
   }, { noAck: false });
 
   // Consumir mensajes de la cola sensores_data y almacenar en la base de datos

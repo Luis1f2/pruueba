@@ -38,7 +38,7 @@ const io = initIO(server);
 
 app.use('/auth', authRoutes);
 app.use('/patients', verifyToken,patientRoutes);
-app.use('/medicines', verifyToken,medicineRoutes);
+app.use('/medicines',medicineRoutes);
 app.use('/alerts', alertRoutes); 
 app.use('/notification',notificationsRoutes);
 app.use('/statistics', statisticsRoutes);
