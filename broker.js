@@ -58,12 +58,12 @@ async function handleMessageToAPI(channel, message, apiUrl, queueName) {
         throw new Error('Mensaje inválido para sensor_data');
       }
 
+      // Ajustamos el contenido al formato requerido por la API
       const formattedContent = {
-        rfid: content.rfid,
-        timestamp: content.timestamp || new Date().toISOString(),
+        id_medicamento_rfid: content.rfid, // Cambiado para cumplir con lo esperado por la API
       };
 
-      const response = await axiosInstance.post('http://localhost:8083/medicines/pending-rfids', formattedContent, {
+      const response = await axiosInstance.post('https://back-pillcare.zapto.org/medicines/pending-rfids', formattedContent, {
         headers: { 'Content-Type': 'application/json' },
       });
 
@@ -138,6 +138,7 @@ async function handleMessageToAPI(channel, message, apiUrl, queueName) {
     channel.ack(message);
   }
 }
+
 
 async function connectToRabbitMQ() {
   try {
