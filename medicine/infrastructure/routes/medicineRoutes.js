@@ -4,7 +4,7 @@ const medicineController = require('../controller/medicineController');
 const { verifyToken } = require('../authMiddleware');
 
 // Crear un medicamento
-router.post('/add', verifyToken,medicineController.addMedicine);
+router.post('/add',medicineController.addMedicine);
 
 // Obtener todos los medicamentos
 router.get('/all', verifyToken,medicineController.getAllMedicines);
