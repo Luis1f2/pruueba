@@ -263,7 +263,7 @@ function startConsumers(channel) {
   }, { noAck: false });
 
   channel.consume(alertButtonQueueName, (message) => {
-    handleMessageToAPI(channel, message, 'http://54.163.130.107:3000/alerts', alertButtonQueueName);
+    handleMessageToAPI(channel, message, 'http://localhost:8083/mini-api/alerts', alertButtonQueueName);
   }, { noAck: false });
 
   channel.consume(rfidQueueName, (message) => {
