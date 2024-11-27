@@ -93,14 +93,15 @@ exports.getLatestRFID = async (req, res) => {
       return res.status(404).json({ message: 'No hay RFIDs pendientes' });
     }
 
-    // Devolver solo el ID del último RFID registrado (sin el resto del objeto)
+    // Devolver solo el ID del último RFID registrado como un objeto JSON
     const latestRFID = pendingRFIDs[pendingRFIDs.length - 1].id_medicamento_rfid;
-    res.status(200).json(latestRFID);  // Solo devuelve el valor del ID, como se solicitó.
+    res.status(200).json({ id_medicamento_rfid: latestRFID }); // Respuesta con el formato solicitado
   } catch (err) {
     // En caso de error, devuelve un mensaje adecuado
     res.status(500).json({ message: 'Error al obtener el último RFID pendiente', error: err.message });
   }
 };
+
 
 exports.pend = async (req, res) => {
   try {

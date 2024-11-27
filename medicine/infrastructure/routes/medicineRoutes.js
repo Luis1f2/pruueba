@@ -13,7 +13,7 @@ router.get('/all', verifyToken,medicineController.getAllMedicines);
 router.get('/id/:id', verifyToken,medicineController.getMedicineByIdOrRFID);
 
 // Obtener RFIDs pendientes
-router.get('/pending-rfids', verifyToken,medicineController.getLatestRFID);
+router.get('/pending-rfids',medicineController.getLatestRFID);
 
 // Actualizar un medicamento
 router.put('/update/:id', verifyToken,medicineController.updateMedicine);

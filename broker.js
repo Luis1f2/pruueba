@@ -1,18 +1,16 @@
 const amqp = require('amqplib');
 const axios = require('axios');
-const mysql = require('mysql2/promise'); // Cliente de MySQL
+const mysql = require('mysql2/promise');
 require('dotenv').config();
 
-// Configuración desde variables de entorno
 const rabbitMQUrl = process.env.RABBITMQ_URL || 'amqp://Luis:Luis@54.237.63.42:5672';
-const rfidQueueName = process.env.RFID_QUEUE || 'sensor_data'; // Exclusivo para RFID
-const sensorsQueueName = process.env.SENSORS_QUEUE || 'sensores_data'; // Nueva cola para otros sensores
+const rfidQueueName = process.env.RFID_QUEUE || 'sensor_data';
+const sensorsQueueName = process.env.SENSORS_QUEUE || 'sensores_data';
 const notificationButtonQueueName = process.env.NOTIFICATION_BUTTON_QUEUE || 'boton_notificaciones';
-const alertButtonQueueName = process.env.ALERT_BUTTON_QUEUE || 'boton_alerta'; // Cola para el botón de alerta
+const alertButtonQueueName = process.env.ALERT_BUTTON_QUEUE || 'boton_alerta';
 
 const MAX_RETRY_COUNT = 5;
 
-// Crear conexión a la base de datos
 const dbConfig = {
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
@@ -32,188 +30,115 @@ async function insertSensorDataToDB(sensor, status) {
   }
 }
 
-// Crear un cliente Axios con timeout
 const axiosInstance = axios.create({
-  timeout: 5000, // Tiempo máximo de espera de 5 segundos
+  timeout: 5000,
 });
 
-// Función para manejar mensajes y enviar datos a la API
 async function handleMessageToAPI(channel, message, apiUrl, queueName) {
   if (!message) return;
 
-  let content = JSON.parse(message.content.toString());
+  let content;
+  try {
+    content = JSON.parse(message.content.toString());
+  } catch (error) {
+    console.error(`Error al parsear mensaje de la cola "${queueName}":`, error.message);
+    channel.ack(message);
+    return;
+  }
+
   console.log(`Mensaje recibido en la cola "${queueName}":`, content);
 
-  const retryCount = (message.properties.headers?.['x-retry'] || 0);
+  const retryCount = message.properties.headers?.['x-retry'] || 0;
 
   try {
-    // Lógica específica para sensor_data
+    // Cola sensor_data (RFID)
     if (queueName === 'sensor_data') {
-      console.log(`Enviando datos a la API desde la cola "sensor_data":`, content);
+      if (!content.rfid) {
+        console.error('El mensaje de sensor_data no contiene un campo "rfid".');
+        throw new Error('Mensaje inválido para sensor_data');
+      }
 
-      // Enviar datos a la API
-      const response = await axiosInstance.post('https://back-pillcare.zapto.org/medicines/pending-rfids', content, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      const formattedContent = {
+        rfid: content.rfid,
+        timestamp: content.timestamp || new Date().toISOString(),
+      };
+
+      const response = await axiosInstance.post('http://localhost:8083/medicines/pending-rfids', formattedContent, {
+        headers: { 'Content-Type': 'application/json' },
       });
 
-      console.log(`Respuesta de la API para la cola "sensor_data":`, response.data);
-
-      // Confirmar el mensaje después de procesarlo
+      console.log(`Respuesta de la API para sensor_data:`, response.data);
       channel.ack(message);
       return;
     }
 
-    // Lógica específica para sensores_data
-    if (queueName === 'sensores_data') {
-      // Extraer datos para insertar en la base de datos
-      const { sensor, status } = content;
-
-      // Insertar datos en la base de datos
-      await insertSensorDataToDB(sensor, status);
-
-      // Confirmar el mensaje después de procesarlo
-      channel.ack(message);
-      return;
-    }
-
-    // Lógica de transformación para otras colas
-    if (!content.id_usuario) {
-      content.id_usuario = 0; // Usuario predeterminado
-    }
-    if (!content.mensaje) {
-      content.mensaje = `Mensaje desde ${queueName}`;
-    }
-    if (!content.fecha_alerta) {
-      content.fecha_alerta = new Date().toISOString(); // Fecha actual
-    }
-    console.log(`Mensaje transformado para la cola "${queueName}":`, content);
-
-    // Enviar datos transformados a la API
-    const response = await axiosInstance.post(apiUrl, content, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    console.log(`Respuesta de la API para la cola "${queueName}":`, response.data);
-
-    // Confirmar el mensaje si se procesó correctamente
-    channel.ack(message);
-  } catch (error) {
-    console.error(`Error enviando datos a la API desde la cola "${queueName}":`, {
-      message: error.message,
-      status: error.response?.status,
-      data: error.response?.data,
-    });
-
-    // Manejo de reintentos
-    if (retryCount < MAX_RETRY_COUNT) {
-      const newRetryCount = retryCount + 1;
-      console.warn(`Reintentando mensaje (${newRetryCount} de ${MAX_RETRY_COUNT}) en la cola "${queueName}"`);
-      channel.sendToQueue(queueName, Buffer.from(message.content), {
-        headers: { 'x-retry': newRetryCount },
-        persistent: true,
-      });
-    } else {
-      console.warn(`Mensaje descartado tras ${retryCount} intentos fallidos en la cola "${queueName}"`);
-      channel.sendToQueue(`${queueName}_dlq`, Buffer.from(message.content), { persistent: true });
-    }
-
-    channel.ack(message); // Confirmar el mensaje incluso si falla para evitar bloqueo
-  }
-}
-
-// Función para manejar mensajes y enviar datos a la API
-async function handleMessageToAPI(channel, message, apiUrl, queueName) {
-  if (!message) return;
-
-  let content = JSON.parse(message.content.toString());
-  console.log(`Mensaje recibido en la cola "${queueName}":`, content);
-
-  const retryCount = (message.properties.headers?.['x-retry'] || 0);
-
-  try {
-    // Si es la cola "boton_alerta", no transformar el mensaje
+    // Cola boton_alerta
     if (queueName === 'boton_alerta') {
-      console.log(`Enviando mensaje sin transformación desde la cola "${queueName}":`, content);
-
-      // Enviar datos a la API tal cual
-      const response = await axiosInstance.post(apiUrl, content, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      const requiredFields = ['id_usuario', 'mensaje', 'fecha_alerta'];
+      requiredFields.forEach((field) => {
+        if (!content[field]) {
+          console.warn(`Campo "${field}" faltante en boton_alerta, asignando valor predeterminado.`);
+          content[field] = field === 'fecha_alerta' ? new Date().toISOString() : 0;
+        }
       });
 
-      console.log(`Respuesta de la API para la cola "${queueName}":`, response.data);
+      const response = await axiosInstance.post(apiUrl, content, {
+        headers: { 'Content-Type': 'application/json' },
+      });
 
-      // Confirmar el mensaje si se procesó correctamente
+      console.log(`Respuesta de la API para boton_alerta:`, response.data);
       channel.ack(message);
       return;
     }
 
-    // Lógica específica para sensores_data
+    // Cola sensores_data (Base de datos)
     if (queueName === 'sensores_data') {
-      // Extraer datos para insertar en la base de datos
       const { sensor, status } = content;
+      if (!sensor || !status) {
+        console.error(`Datos incompletos en sensores_data: ${JSON.stringify(content)}`);
+        throw new Error('Mensaje inválido para sensores_data');
+      }
 
-      // Insertar datos en la base de datos
       await insertSensorDataToDB(sensor, status);
-
-      // Confirmar el mensaje después de procesarlo
       channel.ack(message);
       return;
     }
 
-    // Lógica de transformación para otras colas
+    // Cola boton_notificaciones
     if (!content.id_usuario) {
-      content.id_usuario = 0; // Usuario predeterminado
+      content.id_usuario = 0;
     }
     if (!content.mensaje) {
       content.mensaje = `Mensaje desde ${queueName}`;
     }
     if (!content.fecha_alerta) {
-      content.fecha_alerta = new Date().toISOString(); // Fecha actual
+      content.fecha_alerta = new Date().toISOString();
     }
-    console.log(`Mensaje transformado para la cola "${queueName}":`, content);
 
-    // Enviar datos transformados a la API
     const response = await axiosInstance.post(apiUrl, content, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
     });
 
-    console.log(`Respuesta de la API para la cola "${queueName}":`, response.data);
-
-    // Confirmar el mensaje si se procesó correctamente
+    console.log(`Respuesta de la API para ${queueName}:`, response.data);
     channel.ack(message);
   } catch (error) {
-    console.error(`Error enviando datos a la API desde la cola "${queueName}":`, {
-      message: error.message,
-      status: error.response?.status,
-      data: error.response?.data,
-    });
+    console.error(`Error procesando mensaje de la cola "${queueName}":`, error.message);
 
-    // Manejo de reintentos
     if (retryCount < MAX_RETRY_COUNT) {
-      const newRetryCount = retryCount + 1;
-      console.warn(`Reintentando mensaje (${newRetryCount} de ${MAX_RETRY_COUNT}) en la cola "${queueName}"`);
-      channel.sendToQueue(queueName, Buffer.from(message.content), {
-        headers: { 'x-retry': newRetryCount },
+      console.warn(`Reintentando mensaje (${retryCount + 1}/${MAX_RETRY_COUNT}) en la cola "${queueName}"`);
+      channel.sendToQueue(queueName, Buffer.from(JSON.stringify(content)), {
+        headers: { 'x-retry': retryCount + 1 },
         persistent: true,
       });
     } else {
       console.warn(`Mensaje descartado tras ${retryCount} intentos fallidos en la cola "${queueName}"`);
-      channel.sendToQueue(`${queueName}_dlq`, Buffer.from(message.content), { persistent: true });
+      channel.sendToQueue(`${queueName}_dlq`, Buffer.from(JSON.stringify(content)), { persistent: true });
     }
 
-    channel.ack(message); // Confirmar el mensaje incluso si falla para evitar bloqueo
+    channel.ack(message);
   }
 }
 
-// Consumir mensajes de RabbitMQ
 async function connectToRabbitMQ() {
   try {
     console.log('Intentando conectar a RabbitMQ...');
@@ -232,10 +157,7 @@ async function connectToRabbitMQ() {
       setTimeout(connectToRabbitMQ, 5000);
     });
 
-    // Configuración de colas
     await configureQueues(channel);
-
-    // Consumir mensajes
     startConsumers(channel);
   } catch (error) {
     console.error('Error al conectar con RabbitMQ:', error.message);
@@ -243,8 +165,8 @@ async function connectToRabbitMQ() {
   }
 }
 
-function configureQueues(channel) {
-  return Promise.all([
+async function configureQueues(channel) {
+  await Promise.all([
     channel.assertQueue(rfidQueueName, { durable: true }),
     channel.assertQueue(sensorsQueueName, { durable: true }),
     channel.assertQueue(notificationButtonQueueName, { durable: true }),
@@ -257,23 +179,21 @@ function configureQueues(channel) {
 function startConsumers(channel) {
   channel.prefetch(10);
 
-  // Consumir mensajes para las colas que envían a la API
   channel.consume(notificationButtonQueueName, (message) => {
     handleMessageToAPI(channel, message, 'https://back-pillcare.zapto.org/button-pressed', notificationButtonQueueName);
-  }, { noAck: false });
+  });
 
   channel.consume(alertButtonQueueName, (message) => {
     handleMessageToAPI(channel, message, 'http://localhost:8083/mini-api/alerts', alertButtonQueueName);
-  }, { noAck: false });
+  });
 
   channel.consume(rfidQueueName, (message) => {
-    handleMessageToAPI(channel, message, 'https://back-pillcare.zapto.org/medicines/pending-rfids', rfidQueueName);
-  }, { noAck: false });
+    handleMessageToAPI(channel, message, null, rfidQueueName);
+  });
 
-  // Consumir mensajes de la cola sensores_data y almacenar en la base de datos
   channel.consume(sensorsQueueName, (message) => {
-    handleMessageToAPI(channel, message, null, sensorsQueueName); // No se envía a una API, solo a la base de datos
-  }, { noAck: false });
+    handleMessageToAPI(channel, message, null, sensorsQueueName);
+  });
 }
 
 connectToRabbitMQ();

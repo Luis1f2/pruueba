@@ -33,7 +33,7 @@ app.use(express.json());
 
 const server = require('http').createServer(app);
 
-const io = initIO(server);
+const io = initIO(server); 
 
 
 app.use('/auth', authRoutes);
