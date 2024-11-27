@@ -53,19 +53,20 @@ async function handleMessageToAPI(channel, message, apiUrl, queueName) {
   try {
     // Cola sensor_data (RFID)
     if (queueName === 'sensor_data') {
-      if (!content.rfid) {
-        console.error('El mensaje de sensor_data no contiene un campo "rfid".');
+      // Validamos que el mensaje contenga el campo "id_medicamento_rfid"
+      if (!content.id_medicamento_rfid) {
+        console.error('El mensaje de sensor_data no contiene un campo "id_medicamento_rfid".');
         throw new Error('Mensaje inválido para sensor_data');
       }
 
-      // Ajustamos el contenido al formato requerido por la API
-      const formattedContent = {
-        id_medicamento_rfid: content.rfid, // Cambiado para cumplir con lo esperado por la API
-      };
-
-      const response = await axiosInstance.post('https://back-pillcare.zapto.org/medicines/pending-rfids', formattedContent, {
-        headers: { 'Content-Type': 'application/json' },
-      });
+      // Enviamos el mensaje directamente a la API
+      const response = await axiosInstance.post(
+        'http://localhost:8083/medicines/pending-rfids',
+        content, // El mensaje se utiliza tal cual, ya que tiene el formato requerido
+        {
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
 
       console.log(`Respuesta de la API para sensor_data:`, response.data);
       channel.ack(message);
@@ -93,12 +94,16 @@ async function handleMessageToAPI(channel, message, apiUrl, queueName) {
 
     // Cola sensores_data (Base de datos)
     if (queueName === 'sensores_data') {
-      const { sensor, status } = content;
+      // Mapear "estado" a "status" para la base de datos
+      const { sensor, estado } = content;
+      const status = estado; // Traducción para que coincida con la columna en la tabla
+
       if (!sensor || !status) {
         console.error(`Datos incompletos en sensores_data: ${JSON.stringify(content)}`);
         throw new Error('Mensaje inválido para sensores_data');
       }
 
+      // Insertar los datos en la base de datos
       await insertSensorDataToDB(sensor, status);
       channel.ack(message);
       return;
@@ -138,6 +143,7 @@ async function handleMessageToAPI(channel, message, apiUrl, queueName) {
     channel.ack(message);
   }
 }
+
 
 
 async function connectToRabbitMQ() {

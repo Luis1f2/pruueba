@@ -5,21 +5,7 @@ const cors = require('cors');
 // Crear el router
 const miniApi = express.Router();
 
-// Configuración de CORS
-const corsOptions = {
-  origin: [
-    'http://54.163.130.107:3000',
-    'http://127.0.0.1:5500',
-    'https://pillcare.zapto.org/',
-    'http://localhost:5173/',
-  ],
-  methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type'],
-};
 
-// Aplicar middlewares al router
-miniApi.use(cors(corsOptions));
-miniApi.use(bodyParser.json());
 
 // Variable en memoria para rastrear el estado
 let firstAlertTriggered = false;
