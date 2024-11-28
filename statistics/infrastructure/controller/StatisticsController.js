@@ -28,6 +28,36 @@ class StatisticsController {
         return res.status(400).json({ error: 'Datos incompletos: userId, adherence, probability y alert son requeridos.' });
     }
 
+    const saveStatistics = async (req, res) => {
+      try {
+          const { userId, adherence, probability, alert } = req.body;
+  
+          // Validar que todos los datos requeridos estén presentes
+          if (!userId || adherence == null || probability == null || !alert) {
+              return res.status(400).json({
+                  error: "Datos incompletos: userId, adherence, probability y alert son requeridos.",
+              });
+          }
+  
+          // Validar tipos de datos (opcional, pero recomendado)
+          if (typeof userId !== "number" || typeof adherence !== "number" || typeof probability !== "number" || typeof alert !== "object") {
+              return res.status(400).json({
+                  error: "Datos inválidos: verifica los tipos de userId, adherence, probability y alert.",
+              });
+          }
+  
+          // Pasar datos al caso de uso o repositorio
+          const statistic = { userId, adherence, probability, alert };
+          await statisticsRepository.saveStatistic(statistic);
+  
+          return res.status(201).json({ message: "Estadísticas guardadas correctamente." });
+      } catch (error) {
+          console.error("Error en saveStatistics:", error);
+          return res.status(500).json({ error: "Error interno del servidor." });
+      }
+  };
+  
+
     const statisticsRepository = new StatisticsRepository();
 
     try {

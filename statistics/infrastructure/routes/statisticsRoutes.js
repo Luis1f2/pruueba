@@ -7,7 +7,7 @@ const StatisticsController = require('../controller/StatisticsController');
 router.get('/:userId', StatisticsController.getStatistics);
 router.post('/add',StatisticsController.saveStatistics)
 router.post('/register', StatisticsController.addRegister);
-console.log("Hola",StatisticsController);
+console.log("La estadistica muestra",StatisticsController);
 
 
 module.exports = router;

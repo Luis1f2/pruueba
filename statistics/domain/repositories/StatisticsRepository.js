@@ -1,6 +1,11 @@
 const database = require('../../../user/infrastructure/database');
 
 class StatisticsRepository {
+
+  constructor(database) {
+    this.database = database;
+}
+
   async addRegister({ usuario_id, a_tiempo, fecha_toma }) {
     const query = `
       INSERT INTO registro_tomas (usuario_id, a_tiempo, fecha_toma)
@@ -10,20 +15,22 @@ class StatisticsRepository {
   }
   
   async getAdherence(userId) {
-    const query = `
-      SELECT 
-        SUM(CASE WHEN a_tiempo = TRUE THEN 1 ELSE 0 END) AS dosis_tomadas,
-        COUNT(*) AS dosis_programadas
-      FROM registro_tomas
-      WHERE usuario_id = ?;
-    `;
-    const [results] = await database.execute(query, [userId]);
-    const { dosis_tomadas, dosis_programadas } = results[0];
-    const adherence = dosis_programadas > 0 
-      ? (dosis_tomadas / dosis_programadas) * 100 
-      : 0;
-    return adherence.toFixed(2);
-  }
+    try {
+        const query = `
+            SELECT 
+                SUM(CASE WHEN a_tiempo = TRUE THEN 1 ELSE 0 END) AS dosis_tomadas,
+                COUNT(*) AS dosis_programadas
+            FROM registro_tomas
+            WHERE usuario_id = ?;
+        `;
+        const [results] = await this.database.execute(query, [userId]);
+        // Resto de la lógica...
+    } catch (error) {
+        console.error('Database error in getAdherence:', error);
+        throw new Error('Unable to fetch adherence data');
+    }
+}
+
 
   async getHealthAlerts(userId) {
     const query = `SELECT * FROM eventos_medicos WHERE usuario_id = ?`;
