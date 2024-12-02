@@ -10,11 +10,12 @@ const { initIO } = require('./ioInstance');
 
 
 const corsOptions = {
-  origin: ['http://localhost:8083', 'http://localhost:5173'],
+  origin: ['http://localhost:8083', 'http://localhost:5173','http://127.0.0.1:5500'],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
 };
+
 
 
 const authRoutes = require('./user/infrastructure/routes/authRoutes');
@@ -33,7 +34,16 @@ app.use(express.json());
 
 const server = require('http').createServer(app);
 
-const io = initIO(server); 
+const io = require('socket.io')(server, {
+  cors: {
+    origin: ['http://localhost:5173','http://127.0.0.1:5500'],  
+    methods: ['GET', 'POST'],
+    allowedHeaders: ['Content-Type'],
+    credentials: true,  
+  }
+});
+
+
 
 
 app.use('/auth', authRoutes);
@@ -51,44 +61,56 @@ cron.schedule('* * * * *', async () => {
   console.log('Verificando notificaciones y alertas pendientes cada minuto...');
 
   try {
-      
-      const getPendingNotifications = new GetPendingNotifications(notificationRepository);
-      const pendingNotifications = await getPendingNotifications.execute();
+    // Obtener las notificaciones pendientes
+    const getPendingNotifications = new GetPendingNotifications(notificationRepository);
+    const pendingNotifications = await getPendingNotifications.execute();
 
-      pendingNotifications.forEach((notification) => {
-          const room = `paciente_${notification.id_paciente}`;
-          console.log(`Enviando notificación al paciente ${notification.id_paciente}: ${notification.mensaje}`);
+    const now = new Date();
 
-          io.to(room).emit('notification', {
+    pendingNotifications.forEach(async (notification) => {
+      const notificationTime = new Date(notification.fecha_notificacion);
+
+      // Verificar si la hora actual es igual o posterior a la hora de la notificación
+      if (now >= notificationTime && notification.estado === 'pendiente') {
+        const room = `paciente_${notification.id_paciente}`;
+        console.log(`Enviando notificación al paciente ${notification.id_paciente}: ${notification.mensaje}`);
+
+        console.log(`Enviando notificación al paciente ${id_paciente}`);
+        console.log(`Medicamento ID: ${id_medicamento}`);
+        console.log(`Mensaje: ${mensaje}`);
+
+        // Emitir la notificación al paciente a través de sockets
+        io.to(room).emit('notification', {
+          mensaje: notification.mensaje,
+          id_paciente: notification.id_paciente,
+          id_medicamento: notification.id_medicamento,
+          fecha_notificacion: notification.fecha_notificacion,
+        });
+
+        // Marcar la notificación como completada
+        await notificationRepository.markAsCompleted(notification.id_medicamento);
+
+        // Registrar la adherencia si no se ha confirmado en el tiempo establecido
+        setTimeout(async () => {
+          // Verificar si el paciente ya ha confirmado la toma
+          const confirmacion = await checkPacienteConfirmacion(notification.id_paciente, notification.id_medicamento);
+          
+          if (!confirmacion) {
+            // Si no se confirmó la toma, marcar como no tomada a tiempo
+            await statisticsRepository.addRegister({
               id_paciente: notification.id_paciente,
               id_medicamento: notification.id_medicamento,
-              mensaje: notification.mensaje,
-              fecha_notificacion: notification.fecha_notificacion,
-          });
+              a_tiempo: false,  // No tomada a tiempo
+              fecha_toma: new Date(),
+            });
+            console.log(`Medicamento ${notification.id_medicamento} no tomado a tiempo por el paciente ${notification.id_paciente}`);
+          }
+        }, 60000);  // Espera 1 minuto antes de marcar la toma como no registrada
 
-          notificationRepository.markAsCompleted(notification.id_medicamento);
-      });
-      const getPendingAlerts = new GetPendingAlerts(alertRepository);
-      const pendingAlerts = await getPendingAlerts.execute();
-
-      pendingAlerts.forEach((alert) => {
-          const room = `usuario_${alert.id_usuario}`;
-          console.log(`Enviando alerta al usuario ${alert.id_usuario}: ${alert.mensaje}`);
-
-          // Emitir alerta al usuario correspondiente
-          io.to(room).emit('alert', {
-              id_usuario: alert.id_usuario,
-              id_alerta: alert.id_alerta,
-              mensaje: alert.mensaje,
-              fecha_alerta: alert.fecha_alerta,
-          });
-
-          // Marcar la alerta como completada
-          alertRepository.markAsCompleted(alert.id_alerta);
-      });
-
-  } catch (err) {
-      console.error('Error al enviar notificaciones y alertas pendientes:', err.message);
+      }
+    });
+  } catch (error) {
+    console.error('Error al verificar notificaciones y adherencia:', error.message);
   }
 });
 

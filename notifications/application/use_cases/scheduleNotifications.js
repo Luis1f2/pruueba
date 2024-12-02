@@ -21,8 +21,8 @@ class ScheduleNotifications {
       // Crear notificaciones según el horario del medicamento
       const notifications = [
         new Notification(null, id_paciente, id_medicamento, `Hora de tomar ${nombre_medicamento}`, 'pendiente', notificationTime),
-        new Notification(null, id_paciente, id_medicamento, `Han pasado 10 minutos. Toma ${nombre_medicamento}`, 'pendiente', sumarMinutos(notificationTime, 10)),
-        new Notification(null, id_paciente, id_medicamento, `Han pasado 30 minutos. Asegúrate de tomar ${nombre_medicamento}`, 'pendiente', sumarMinutos(notificationTime, 30)),
+        new Notification(null, id_paciente, id_medicamento, `Han pasado 10 minutos. Toma ${nombre_medicamento}`, 'pendiente', sumarMinutos(notificationTime, 1)),
+        new Notification(null, id_paciente, id_medicamento, `Han pasado 30 minutos. Asegúrate de tomar ${nombre_medicamento}`, 'pendiente', sumarMinutos(notificationTime, 1.30)),
       ];
   
       for (const notification of notifications) {
